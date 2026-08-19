@@ -99,8 +99,8 @@ export function EntryForm() {
         <h1>{editing ? 'Edit entry' : 'Record an entry'}</h1>
         <p className="sub">
           {editing
-            ? 'Changes are logged in the ledger, with the previous values kept.'
-            : 'Write it down while you remember it clearly.'}
+            ? 'Your original wording is kept in History, so editing never erases what you first said.'
+            : 'Write it down while you still remember it clearly.'}
         </p>
       </div>
 
@@ -113,7 +113,7 @@ export function EntryForm() {
       >
         <div className="card stack">
           <div className="field">
-            <label htmlFor="title">What happened</label>
+            <label htmlFor="title">What happened?</label>
             <input
               id="title"
               className="input"
@@ -126,7 +126,7 @@ export function EntryForm() {
           </div>
 
           <div className="field">
-            <label htmlFor="occurred">When it happened</label>
+            <label htmlFor="occurred">When did it happen?</label>
             <input
               id="occurred"
               className="input"
@@ -134,11 +134,14 @@ export function EntryForm() {
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
             />
-            <span className="hint">Defaults to now. Set it back if you are recording after the fact.</span>
+            <span className="hint">
+              Defaults to right now. Change it if you are writing this up after the fact — the
+              timeline sorts by this, not by when you typed it.
+            </span>
           </div>
 
           <div className="field">
-            <label htmlFor="notes">Account</label>
+            <label htmlFor="notes">Tell the story</label>
             <textarea
               id="notes"
               className="textarea"
@@ -151,6 +154,10 @@ export function EntryForm() {
 
         <div className="card stack">
           <div className="section-label">Files</div>
+          <p className="tiny faint" style={{ marginTop: -4 }}>
+            Anything at all: photos, screenshots, video, voice memos, PDFs, letters, documents. Each
+            one gets a fingerprint the moment you save, so you can prove later it was never altered.
+          </p>
           <FilePicker onFiles={(files) => setPending((prev) => [...prev, ...files])} />
 
           {pending.length > 0 && (
@@ -209,7 +216,11 @@ export function EntryForm() {
         </div>
 
         <div className="card stack">
-          <div className="section-label">Context</div>
+          <div className="section-label">Details (all optional)</div>
+          <p className="tiny faint" style={{ marginTop: -4 }}>
+            Skip anything that does not apply. These make entries easier to find later, and make an
+            export read far better to someone who wasn’t there.
+          </p>
 
           <div className="field">
             <label htmlFor="case">Case</label>
@@ -223,17 +234,16 @@ export function EntryForm() {
 
           <div className="grid-2">
             <div className="field">
-              <label htmlFor="people">Who was involved</label>
+              <label htmlFor="people">Who was involved?</label>
               <input
                 id="people"
                 className="input"
                 value={people}
                 onChange={(e) => setPeople(e.target.value)}
-                placeholder="Comma separated"
-              />
+                placeholder="Comma separated" />
             </div>
             <div className="field">
-              <label htmlFor="location">Where</label>
+              <label htmlFor="location">Where did it happen?</label>
               <input
                 id="location"
                 className="input"
@@ -245,7 +255,7 @@ export function EntryForm() {
           </div>
 
           <div className="field">
-            <label htmlFor="source">Where the material came from</label>
+            <label htmlFor="source">Where did these files come from?</label>
             <input
               id="source"
               className="input"
@@ -253,7 +263,9 @@ export function EntryForm() {
               onChange={(e) => setSource(e.target.value)}
               placeholder="e.g. “screenshot of text thread”, “emailed to me by the office”"
             />
-            <span className="hint">Provenance matters as much as the file itself.</span>
+            <span className="hint">
+              Where a piece of evidence came from often matters as much as the evidence itself.
+            </span>
           </div>
 
           <div className="field">

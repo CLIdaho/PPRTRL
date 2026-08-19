@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import type { Entry } from '../db/types'
 import { EntryCard } from '../components/EntryCard'
+import { Explain } from '../components/Explain'
 import { PlusIcon, SearchIcon } from '../components/icons'
 import { formatDayHeading } from '../lib/format'
 
@@ -86,6 +87,16 @@ export function Timeline() {
 
       {entries.length > 0 && (
         <div className="stack" style={{ marginBottom: 18 }}>
+          <Explain question="What is this screen?">
+            <p>
+              Everything you have recorded, newest first, whether or not it belongs to a case. Tap
+              any entry to see the full account and its files.
+            </p>
+            <p>
+              Search looks through titles, your written account, names, places and tags. Tap a tag to
+              show only entries carrying it.
+            </p>
+          </Explain>
           <div style={{ position: 'relative' }}>
             <input
               className="input"
@@ -126,16 +137,58 @@ export function Timeline() {
       )}
 
       {entries.length === 0 ? (
-        <div className="empty">
-          <h3>Start the trail</h3>
-          <p>
-            Record what happened while it is fresh. Each file you attach is hashed the moment it
-            arrives, and every action is logged in order.
-          </p>
-          <Link to="/entry/new" className="btn primary">
+        <div className="stack">
+          <div className="welcome-hero">
+            <h1>Welcome to Papertrail</h1>
+            <p>A private place to write down things as they happen, and keep proof they haven’t
+              been changed since.</p>
+          </div>
+
+          <div className="card">
+            <div className="section-label">How it works</div>
+            <div className="step">
+              <span className="step-num">1</span>
+              <div>
+                <h4>Write down what happened</h4>
+                <p>A short title and the story in your own words. Do it while you still remember the
+                  details — that is the part you cannot get back later.</p>
+              </div>
+            </div>
+            <div className="step">
+              <span className="step-num">2</span>
+              <div>
+                <h4>Attach anything that came with it</h4>
+                <p>Photos, screenshots, video, voice recordings, PDFs, letters, documents. Papertrail
+                  takes a fingerprint of each file the moment you add it.</p>
+              </div>
+            </div>
+            <div className="step">
+              <span className="step-num">3</span>
+              <div>
+                <h4>Hand someone the whole story later</h4>
+                <p>Export a single file containing your timeline, your evidence, and a way for them
+                  to check that none of it was altered.</p>
+              </div>
+            </div>
+          </div>
+
+          <Link to="/entry/new" className="btn primary block">
             <PlusIcon size={18} />
-            Record the first entry
+            Record your first entry
           </Link>
+
+          <Explain question="Where is my information stored?">
+            <p>
+              <strong>Only on this device.</strong> Papertrail has no account and no server. Nothing
+              is uploaded anywhere, and once installed it works with no internet at all.
+            </p>
+            <p>
+              The trade-off: nobody is backing it up for you. Visit Settings early to turn on
+              persistent storage and save a backup somewhere safe.
+            </p>
+          </Explain>
+
+          <Link className="btn block" to="/guide">Read the two-minute guide</Link>
         </div>
       ) : visible.length === 0 ? (
         <div className="empty">

@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
 import { record, verifyChain, type ChainReport } from '../db/ledger'
 import { verifyFiles, type IntegrityResult } from '../db/repo'
+import { Explain } from '../components/Explain'
 import { AlertIcon, ShieldIcon } from '../components/icons'
 import { formatDateTime } from '../lib/format'
 import { shortHash } from '../lib/hash'
@@ -56,42 +57,66 @@ export function Ledger() {
   return (
     <>
       <div className="page-head">
-        <h1>Ledger</h1>
+        <h1>History</h1>
         <p className="sub">
-          Every action, in order, each line sealed against the one before it.
+          A sealed log of everything that has happened here, in order.
         </p>
       </div>
+
+      <Explain question="What is this screen and why should I care?" defaultOpen>
+        <p>
+          Every action you take — recording an entry, editing it, attaching a file, deleting
+          something, running an export — gets written down here as a numbered line. Lines are only
+          ever added. Nothing here can be edited or removed, including by you.
+        </p>
+        <p>
+          Each line also carries a fingerprint of the line before it, so they are joined in a chain.
+          If anyone tampered with your records outside the app, the chain would break and the banner
+          below would say so.
+        </p>
+        <p>
+          <strong>In short:</strong> this is what lets you say “here is my record, and here is proof
+          I haven’t quietly changed it since.”
+        </p>
+      </Explain>
+
+      <div style={{ height: 12 }} />
 
       <div className={`banner ${allGood ? 'ok' : chain && !chain.intact ? 'bad' : ''}`}>
         {allGood ? <ShieldIcon /> : <AlertIcon />}
         <div>
           {chain === null ? (
-            'Checking the chain…'
+            'Checking…'
           ) : chain.intact ? (
             <>
-              <strong>Chain intact.</strong> {chain.length} recorded action
-              {chain.length === 1 ? '' : 's'}, unbroken from the first.
+              <strong>Everything checks out.</strong> {chain.length} recorded action
+              {chain.length === 1 ? '' : 's'}, with no gaps and no signs of tampering.
               {files && (
                 problems.length === 0
-                  ? ` All ${files.length} stored file${files.length === 1 ? '' : 's'} match their original hash.`
-                  : ` ${problems.length} file${problems.length === 1 ? '' : 's'} failed the hash check.`
+                  ? ` All ${files.length} stored file${files.length === 1 ? ' is' : 's are'} exactly as you saved ${files.length === 1 ? 'it' : 'them'}.`
+                  : ` But ${problems.length} file${problems.length === 1 ? '' : 's'} did not match — see below.`
               )}
             </>
           ) : (
             <>
-              <strong>The chain is broken.</strong> {chain.problems.length} problem
-              {chain.problems.length === 1 ? '' : 's'} found — the log has been altered outside the app.
+              <strong>Something has been tampered with.</strong> {chain.problems.length} problem
+              {chain.problems.length === 1 ? '' : 's'} found. This log was changed by something other
+              than Papertrail. Export a backup and treat these records with caution.
             </>
           )}
-          <div className="tiny mono faint break" style={{ marginTop: 6 }}>
-            head {chain ? shortHash(chain.headHash) : '…'}
+          <div className="tiny mono faint break" style={{ marginTop: 6 }} title="The fingerprint of the most recent line in the log.">
+            latest seal {chain ? shortHash(chain.headHash) : '…'}
           </div>
         </div>
       </div>
 
       <div style={{ marginTop: 12 }}>
+        <p className="tiny faint" style={{ marginBottom: 8 }}>
+          Re-reads every file you have stored and compares it against the fingerprint taken when you
+          first added it. Safe to run any time; it only reads.
+        </p>
         <button className="btn block" onClick={() => void runFullCheck()} disabled={checking}>
-          {checking ? 'Re-hashing every file…' : 'Run a full integrity check'}
+          {checking ? 'Checking every file…' : 'Check every file for tampering'}
         </button>
         {checking && (
           <div className="progress" style={{ marginTop: 8 }}>
@@ -102,7 +127,7 @@ export function Ledger() {
 
       {chain && !chain.intact && (
         <div className="card" style={{ marginTop: 12 }}>
-          <div className="section-label">Chain problems</div>
+          <div className="section-label">What is wrong</div>
           {chain.problems.map((p, i) => (
             <div className="small" key={i} style={{ marginTop: i ? 6 : 0 }}>
               <span className="mono faint">#{p.seq}</span> {p.detail}
@@ -113,17 +138,17 @@ export function Ledger() {
 
       {problems.length > 0 && (
         <div className="card" style={{ marginTop: 12 }}>
-          <div className="section-label">Files that failed</div>
+          <div className="section-label">Files that no longer match</div>
           {problems.map((p) => (
             <div className="small" key={p.attachmentId} style={{ marginTop: 6 }}>
-              <strong>{p.name}</strong> — {p.status === 'missing' ? 'the stored copy is gone' : 'contents no longer match the hash taken at intake'}
+              <strong>{p.name}</strong> — {p.status === 'missing' ? 'the stored copy has gone missing' : 'this file is not the one you originally saved'}
             </div>
           ))}
         </div>
       )}
 
       <div className="card" style={{ marginTop: 16 }}>
-        <div className="section-label">History</div>
+        <div className="section-label">Everything that has happened</div>
         {entries.map((e) => (
           <div className="ledger-item" key={e.seq}>
             <span className="ledger-seq">{e.seq}</span>
@@ -142,8 +167,8 @@ export function Ledger() {
       </div>
 
       <p className="tiny faint" style={{ marginTop: 14 }}>
-        The ledger is append-only. Entries are never edited or removed, including when evidence is
-        deleted — a gap in the record would defeat the purpose.
+        Lines are only ever added here, never changed or removed — including when you delete
+        evidence. A record with silent gaps would be far easier to doubt.
       </p>
     </>
   )

@@ -60,23 +60,23 @@ export function Settings() {
     <>
       <div className="page-head">
         <h1>Settings</h1>
-        <p className="sub">Your records, your device.</p>
+        <p className="sub">Backups, exports, and keeping your records safe.</p>
       </div>
 
       <div className="stack">
         <div className="banner">
           <ShieldIcon />
           <div>
-            Papertrail has no account and no server. Nothing is uploaded, and the app makes no
-            network requests once installed. That also means <strong>nothing is backed up for
-            you</strong> — if you lose this device or clear its site data, the records go with it.
-            Export a backup somewhere safe.
+            <strong>Everything here lives on this device only.</strong> There is no account and no
+            server, nothing is uploaded, and the app works with no internet at all. That privacy has
+            a cost: <strong>nobody is backing this up for you.</strong> If you lose this device or
+            clear its browsing data, the records go with it.
           </div>
         </div>
 
         {counts && (
           <div className="card">
-            <div className="section-label">Stored here</div>
+            <div className="section-label">What you have stored</div>
             <div className="row wrap" style={{ gap: 8 }}>
               <span className="chip">{counts.entries} entries</span>
               <span className="chip">{counts.cases} cases</span>
@@ -93,10 +93,11 @@ export function Settings() {
         )}
 
         <div className="card stack">
-          <div className="section-label">Backup</div>
+          <div className="section-label">Backup — do this one</div>
           <p className="small muted">
-            A full copy of every case, entry, file, and ledger line — restorable into a fresh
-            install on another device.
+            Saves everything you have — every case, entry, file and History line — into a single ZIP
+            you can keep somewhere else. It is the only safety net you have, so make one now and
+            again after anything important.
           </p>
           <button
             className="btn block"
@@ -131,15 +132,17 @@ export function Settings() {
             {busy === 'restore' ? 'Restoring…' : 'Restore from a backup'}
           </button>
           <p className="tiny faint">
-            Restoring merges into what is already here; it never erases existing records.
+            Restoring <strong>adds to</strong> what is already here — it never wipes or replaces your
+            existing records, so it is safe to run on a device that already has entries.
           </p>
         </div>
 
         <div className="card stack">
           <div className="section-label">Export everything</div>
           <p className="small muted">
-            A readable bundle of every entry across every case — report, files, manifest, and the
-            hash chain.
+            For handing to someone else. A readable report of every entry, with the files and a way
+            for them to check nothing was altered. Unlike a backup, this is meant to be opened and
+            read by a person who does not have Papertrail.
           </p>
           <button
             className="btn block"
@@ -157,10 +160,10 @@ export function Settings() {
         </div>
 
         <div className="card stack">
-          <div className="section-label">Keep the data safe</div>
+          <div className="section-label">Stop your browser deleting this</div>
           <p className="small muted">
-            Browsers may clear storage for sites they consider inactive. Asking for persistent
-            storage tells this device to hold on to your records.
+            Browsers sometimes clear stored data for sites they think you have stopped using. This
+            asks yours to hold on to your records instead. Worth doing right now.
           </p>
           <button
             className="btn block"
@@ -181,6 +184,7 @@ export function Settings() {
 
         <div className="card stack">
           <div className="section-label">Appearance</div>
+          <p className="tiny faint" style={{ marginTop: -4 }}>Light theme is easier to read outdoors.</p>
           <div className="row" style={{ gap: 6 }}>
             {(['dark', 'light'] as Theme[]).map((t) => (
               <button
@@ -200,8 +204,8 @@ export function Settings() {
         {error && <div className="banner bad"><ShieldIcon />{error}</div>}
 
         <p className="tiny faint" style={{ textAlign: 'center', marginTop: 8 }}>
-          Papertrail keeps a consistent, checkable record. It is not legal advice, and it does not
-          prove that an event happened — only that what you recorded has not changed since.
+          Papertrail shows that what you recorded has not changed since you recorded it. It cannot
+          prove an event happened, and it is not legal advice.
         </p>
       </div>
     </>

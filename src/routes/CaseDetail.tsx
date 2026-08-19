@@ -7,6 +7,7 @@ import { useRecord } from '../db/hooks'
 import { updateCase } from '../db/repo'
 import type { CaseStatus } from '../db/types'
 import { EntryCard } from '../components/EntryCard'
+import { Explain } from '../components/Explain'
 import { Sheet } from '../components/Sheet'
 import { ExportIcon, PlusIcon } from '../components/icons'
 import { exportBundle, type ExportResult } from '../lib/exporter'
@@ -44,6 +45,7 @@ export function CaseDetail() {
         <h1>{theCase.title}</h1>
         {theCase.summary && <p className="sub">{theCase.summary}</p>}
         <div className="row wrap" style={{ gap: 6, marginTop: 10 }}>
+          <span className="tiny faint" style={{ marginRight: 2 }}>Status</span>
           {STATUSES.map((s) => (
             <button
               key={s}
@@ -69,7 +71,18 @@ export function CaseDetail() {
         </button>
       </div>
 
-      <p className="small faint" style={{ marginBottom: 14 }}>
+      <Explain question="What does “export case” give me?">
+        <p>
+          One ZIP file holding a printable report of these entries, the original files, and a page
+          explaining how anyone can check that nothing was altered.
+        </p>
+        <p>
+          The person you send it to needs no account and no copy of Papertrail — they just open the
+          report in a browser.
+        </p>
+      </Explain>
+
+      <p className="small faint" style={{ marginTop: 14, marginBottom: 14 }}>
         {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
         {span ? ` · ${span}` : ''}
       </p>

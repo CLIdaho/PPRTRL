@@ -53,14 +53,17 @@ function AttachmentView({ att }: { att: Attachment }) {
           <div className="file-fallback">
             <Icon size={26} />
             <p className="small" style={{ marginTop: 8 }}>
-              No preview for this file type. Save it to open in another app.
+              This kind of file can’t be shown here. Tap Save to open it in another app — the file
+              itself is stored safely either way.
             </p>
           </div>
         </div>
       )}
 
       <div>
-        <div className="tiny faint">SHA-256 recorded at intake</div>
+        <div className="tiny faint" title="A fingerprint of this file's contents, taken when you added it. Re-check it any time from the History screen.">
+          Fingerprint taken when you added this file
+        </div>
         <div className="mono tiny break" style={{ marginTop: 2 }}>{att.sha256}</div>
       </div>
     </div>
@@ -111,8 +114,8 @@ export function EntryDetail() {
         <div className="banner bad" style={{ marginBottom: 14 }}>
           <ShieldIcon />
           <div>
-            This entry was deleted {relativeTime(entry.deletedAt)}. Its files are gone, but the record
-            of it remains in the ledger.
+            You deleted this entry {relativeTime(entry.deletedAt)}. Its files are gone for good, but
+            History still shows that it existed and was deleted — so your record has no silent gaps.
           </div>
         </div>
       )}
@@ -158,7 +161,7 @@ export function EntryDetail() {
         {attachments.map((att) => <AttachmentView key={att.id} att={att} />)}
 
         <div className="card">
-          <div className="section-label">Record</div>
+          <div className="section-label">When this was written down</div>
           <div className="small muted">Recorded {formatDateTime(entry.recordedAt)}</div>
           {edited && <div className="small muted">Last edited {formatDateTime(entry.updatedAt)}</div>}
           <div className="tiny faint mono" style={{ marginTop: 6 }}>{isoLocal(entry.occurredAt)}</div>
@@ -166,7 +169,7 @@ export function EntryDetail() {
           {history.length > 0 && (
             <>
               <div className="divider" />
-              <div className="section-label">Ledger history</div>
+              <div className="section-label">What has happened to this entry</div>
               {history.map((h) => (
                 <div className="ledger-item" key={h.seq}>
                   <span className="ledger-seq">{h.seq}</span>

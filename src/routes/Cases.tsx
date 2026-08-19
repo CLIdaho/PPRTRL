@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '../db/db'
 import { createCase } from '../db/repo'
+import { Explain } from '../components/Explain'
 import { Sheet } from '../components/Sheet'
 import { PlusIcon } from '../components/icons'
 import { relativeTime } from '../lib/format'
@@ -37,7 +38,7 @@ export function Cases() {
       <div className="page-head row between">
         <div>
           <h1>Cases</h1>
-          <p className="sub">Group related entries so they can be exported together.</p>
+          <p className="sub">A folder for one situation you are documenting.</p>
         </div>
         <button className="btn primary" onClick={() => setCreating(true)}>
           <PlusIcon size={18} />
@@ -46,16 +47,28 @@ export function Cases() {
       </div>
 
       {cases.length === 0 ? (
-        <div className="empty">
-          <h3>No cases yet</h3>
-          <p>
-            A case is one situation you are documenting — a dispute, an ongoing problem, one
-            person. Entries can also stand on their own.
-          </p>
-          <button className="btn primary" onClick={() => setCreating(true)}>
-            <PlusIcon size={18} />
-            Open a case
-          </button>
+        <div className="stack">
+          <div className="empty">
+            <h3>No cases yet</h3>
+            <p>
+              A case groups related entries so you can export that one story on its own — without
+              everything else you have recorded coming along with it.
+            </p>
+            <button className="btn primary" onClick={() => setCreating(true)}>
+              <PlusIcon size={18} />
+              Open your first case
+            </button>
+          </div>
+          <Explain question="Do I have to use cases?" defaultOpen>
+            <p>
+              <strong>No.</strong> Entries work perfectly well on their own, and you can file them
+              into a case later at any time.
+            </p>
+            <p>
+              Cases earn their keep when you have more than one thing going on at once, or when you
+              want to hand someone just the part that concerns them.
+            </p>
+          </Explain>
         </div>
       ) : (
         <div className="stack">
@@ -75,6 +88,20 @@ export function Cases() {
             </Link>
           ))}
         </div>
+      )}
+
+      {cases.length > 0 && (
+        <Explain question="What does a case actually do?">
+          <p>
+            It keeps one story together. When you export a case you get a report covering just those
+            entries — useful when handing something to a lawyer, an inspector, or HR who has no
+            business seeing the rest.
+          </p>
+          <p>
+            Marking a case <strong>resolved</strong> or <strong>archived</strong> only changes its
+            label. Nothing is deleted or hidden, and the change is written to your History log.
+          </p>
+        </Explain>
       )}
 
       {loose > 0 && (

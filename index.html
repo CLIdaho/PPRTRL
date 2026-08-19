@@ -7,9 +7,53 @@
     <meta name="theme-color" content="#0e1116" />
     <meta name="description" content="A local-first evidence log. Everything stays on your device." />
     <title>Papertrail</title>
+    <style>
+      /* Painted before any stylesheet loads, so a failure is never a white void. */
+      html, body { margin: 0; height: 100%; background: #0e1116; color: #e9ecf1;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      #boot { max-width: 30rem; margin: 0 auto; padding: 3rem 1.25rem; line-height: 1.6; }
+      #boot h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
+      #boot p { margin: 0 0 0.85rem; color: #9aa5b4; font-size: 0.95rem; }
+      #boot code { font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem;
+        background: #1a2029; padding: 0.15rem 0.4rem; border-radius: 5px; color: #e9ecf1; }
+      #boot pre { background: #0a0d11; border: 1px solid #262e3a; border-radius: 10px;
+        padding: 0.85rem 1rem; overflow-x: auto; font-size: 0.85rem; color: #e9ecf1; }
+      #boot .why { border-left: 2px solid #e8a84a; padding-left: 0.9rem; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <!--
+      Shown only if the app never starts. React clears #root's siblings on mount,
+      so a working build hides this within a frame; a broken one explains itself
+      instead of leaving a blank page.
+    -->
+    <div id="boot">
+      <h1>Papertrail didn’t start</h1>
+      <p class="why">
+        You are most likely opening this HTML file directly. That cannot work: browsers refuse to
+        load a modern app’s scripts over <code>file://</code>, so nothing runs. Papertrail has to be
+        served over <code>http://</code> — even locally.
+      </p>
+      <p>Build it and serve it:</p>
+      <pre>npm install
+npm run build
+npm run preview</pre>
+      <p>
+        Then open the <code>http://localhost:…</code> address it prints. For day-to-day development
+        use <code>npm run dev</code> instead.
+      </p>
+      <p>
+        If you are hosting this: publish the <strong><code>dist/</code></strong> folder, not the
+        repository root. The file at the repo root is a build template and is not a working page.
+      </p>
+      <noscript>
+        <p><strong>JavaScript is turned off.</strong> Papertrail runs entirely in your browser, so it
+        needs JavaScript enabled.</p>
+      </noscript>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

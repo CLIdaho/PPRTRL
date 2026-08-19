@@ -1,10 +1,10 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CaseIcon, LedgerIcon, SettingsIcon, TimelineIcon, BackIcon } from './icons'
 
 const TABS = [
   { to: '/', label: 'Timeline', Icon: TimelineIcon, end: true },
   { to: '/cases', label: 'Cases', Icon: CaseIcon, end: false },
-  { to: '/ledger', label: 'Ledger', Icon: LedgerIcon, end: false },
+  { to: '/ledger', label: 'History', Icon: LedgerIcon, end: false },
   { to: '/settings', label: 'Settings', Icon: SettingsIcon, end: false },
 ]
 
@@ -39,9 +39,14 @@ export function AppShell() {
           </button>
         )}
         <div className="spacer" />
-        <span className="tiny faint" title="Papertrail has no server and makes no network requests.">
-          On this device only
-        </span>
+        <Link
+          to="/guide"
+          className="tiny"
+          style={{ color: 'var(--text-faint)', textDecoration: 'none' }}
+          title="Papertrail has no server and makes no network requests. Tap to learn how it works."
+        >
+          On this device only · Help
+        </Link>
       </header>
 
       <main className="page">
