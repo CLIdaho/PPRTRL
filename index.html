@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0e1116" />
+
+    <!-- iOS has no install API and ignores the web manifest, so the home-screen
+         appearance has to be declared the old way or the icon is a screenshot. -->
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Papertrail" />
     <meta name="description" content="A local-first evidence log. Everything stays on your device." />
     <title>Papertrail</title>
     <style>

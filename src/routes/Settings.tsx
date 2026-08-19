@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '../db/db'
 import { exportBackup, exportBundle, importBackup, type RestoreSummary } from '../lib/exporter'
+import { InstallPrompt } from '../components/InstallPrompt'
 import { ExportIcon, ShieldIcon } from '../components/icons'
 import { formatBytes } from '../lib/files'
 
@@ -73,6 +74,8 @@ export function Settings() {
             clear its browsing data, the records go with it.
           </div>
         </div>
+
+        <InstallPrompt />
 
         {counts && (
           <div className="card">

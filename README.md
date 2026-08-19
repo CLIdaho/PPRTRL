@@ -63,7 +63,17 @@ The `index.html` at the root is a build template that points at TypeScript
 source; serving it directly is exactly what produces a blank page. Because the
 app uses hash routing, any static host works with no rewrite rules.
 
-**2. Build one portable file.**
+**2. Host it on GitHub Pages.** A workflow in `.github/workflows/deploy.yml`
+builds the app and publishes it on every push. It needs one setting turned on,
+once: **Settings → Pages → Source → “GitHub Actions”**.
+
+Do not set Pages to serve a branch root — that serves the build template and
+produces the blank page described above. The published URL
+(`https://<user>.github.io/<repo>/`) can be sent to anyone; the app is
+installable from it, works offline afterwards, and still stores everything only
+in that person's own browser.
+
+**3. Build one portable file.**
 
 ```bash
 npm run build:single    # writes dist-single/papertrail.html

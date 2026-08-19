@@ -607,3 +607,15 @@ button, input, textarea, select {
   background: var(--accent);
   margin-top: 8px;
 }
+
+/* ------------------------------ install nudge ----------------------------- */
+
+.install-card {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  padding: 14px 15px;
+}
+
+.install-card strong { font-size: 14.5px; }

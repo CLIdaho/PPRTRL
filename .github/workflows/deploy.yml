@@ -1,0 +1,62 @@
+# Builds Papertrail and publishes it to GitHub Pages.
+#
+# Pages must not serve the repository root: the index.html there is a build
+# template that points at TypeScript source, so serving it directly shows the
+# "Papertrail didn't start" page. This workflow publishes the built dist/
+# folder instead.
+#
+# One-time setup: repository Settings -> Pages -> Source -> "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npx tsc -b
+
+      - name: Build
+        run: npm run build
+
+      # Pages serves from a project subpath (/<repo>/). The Vite config uses a
+      # relative base and the app uses hash routing, so the same build works at
+      # any path with no rewrite rules.
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -6,6 +6,7 @@ import { db } from '../db/db'
 import type { Entry } from '../db/types'
 import { EntryCard } from '../components/EntryCard'
 import { Explain } from '../components/Explain'
+import { InstallPrompt } from '../components/InstallPrompt'
 import { PlusIcon, SearchIcon } from '../components/icons'
 import { formatDayHeading } from '../lib/format'
 
@@ -87,6 +88,7 @@ export function Timeline() {
 
       {entries.length > 0 && (
         <div className="stack" style={{ marginBottom: 18 }}>
+          <InstallPrompt dismissible />
           <Explain question="What is this screen?">
             <p>
               Everything you have recorded, newest first, whether or not it belongs to a case. Tap
@@ -176,6 +178,8 @@ export function Timeline() {
             <PlusIcon size={18} />
             Record your first entry
           </Link>
+
+          <InstallPrompt dismissible />
 
           <Explain question="Where is my information stored?">
             <p>
