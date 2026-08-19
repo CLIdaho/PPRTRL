@@ -62,3 +62,14 @@ createRoot(document.getElementById('root')!).render(
 
 // The app is up, so retire the "didn't start" fallback in index.html.
 document.getElementById('boot')?.remove()
+
+// Clear the traces of a recovery attempt: the flag that stops it looping, and
+// the cache-busting parameter it added to the URL.
+try {
+  sessionStorage.removeItem('papertrail:recovery-attempted')
+} catch {
+  // Storage can be blocked entirely; nothing here is worth failing a load over.
+}
+if (location.search.includes('reload=')) {
+  history.replaceState(null, '', location.pathname + location.hash)
+}

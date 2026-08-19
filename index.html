@@ -28,6 +28,8 @@
       #boot pre { background: #0a0d11; border: 1px solid #262e3a; border-radius: 10px;
         padding: 0.85rem 1rem; overflow-x: auto; font-size: 0.85rem; color: #e9ecf1; }
       #boot .why { border-left: 2px solid #e8a84a; padding-left: 0.9rem; }
+      #boot button { font: inherit; font-size: 0.95rem; color: #2a1c06; background: #e8a84a;
+        border: 0; border-radius: 8px; padding: 0.6rem 1.1rem; cursor: pointer; }
       #boot-detail:empty { display: none; }
       [hidden] { display: none !important; }
     </style>
@@ -64,15 +66,20 @@ npm run preview</pre>
       </div>
 
       <div id="boot-served" hidden>
-        <p class="why">
-          The page loaded but the app did not start. That usually means the browser is too old for
-          it, or a file failed to download on a poor connection.
+        <p id="boot-fixing" class="why">
+          Something went wrong loading the app. Clearing it out and trying again…
         </p>
-        <p>Worth trying, in order: reload the page, then close and reopen the browser tab.</p>
-        <p>
-          If it still fails, the browser is probably the problem — updating it, or opening the link
-          in Chrome, Firefox, or Safari, should sort it.
-        </p>
+        <div id="boot-stuck" hidden>
+          <p class="why">
+            The app still would not start after clearing its stored copy. Most likely this browser
+            is too old for it, or a file keeps failing to download.
+          </p>
+          <p>
+            Opening the link in an up-to-date Chrome, Firefox, Safari, or Edge should sort it. Your
+            saved records are not affected by any of this.
+          </p>
+          <p><button id="boot-retry" type="button">Try again</button></p>
+        </div>
         <pre id="boot-detail"></pre>
       </div>
 
@@ -83,21 +90,89 @@ npm run preview</pre>
     </div>
 
     <!-- Deliberately a classic script in old-fashioned syntax: this has to run on
-         exactly the browsers that are too old to parse the app itself. -->
+         exactly the browsers that are too old to parse the app itself.
+
+         Its job is recovery. A stale cached page pointing at files that a later
+         deploy removed leaves a visitor permanently stuck on a dead page, and
+         telling people to clear their browser cache is not a fix. So if the app
+         has not started shortly after load, this clears the stored copy and
+         reloads once, by itself. -->
     <script>
       (function () {
+        var ATTEMPTED = 'papertrail:recovery-attempted';
         var served = location.protocol === 'http:' || location.protocol === 'https:';
-        if (served) {
-          document.getElementById('boot-file').hidden = true;
-          document.getElementById('boot-served').hidden = false;
+        var hadLoadError = false;
+
+        if (!served) return; // A file:// failure needs the other explanation.
+
+        document.getElementById('boot-file').hidden = true;
+        document.getElementById('boot-served').hidden = false;
+
+        function started() { return !document.getElementById('boot'); }
+
+        function attempted() {
+          try { return sessionStorage.getItem(ATTEMPTED) === '1'; } catch (e) { return false; }
         }
-        // Surface the real reason rather than making the reader guess.
+        function markAttempted() {
+          try { sessionStorage.setItem(ATTEMPTED, '1'); } catch (e) {}
+        }
+
+        function showStuck() {
+          var fixing = document.getElementById('boot-fixing');
+          var stuck = document.getElementById('boot-stuck');
+          if (fixing) fixing.hidden = true;
+          if (stuck) stuck.hidden = false;
+        }
+
+        // Throw away everything this origin has stored *about the app* and load
+        // it again. Records live in IndexedDB and are deliberately untouched.
+        function clearAndReload() {
+          var jobs = [];
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+            if (window.caches && caches.keys) {
+              jobs.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+              }));
+            }
+          } catch (e) {}
+
+          var go = function () {
+            // A changing query string defeats any cached copy of this page.
+            var base = location.href.split('#')[0].split('?')[0];
+            location.replace(base + '?reload=' + Date.now() + location.hash);
+          };
+          if (!jobs.length) return go();
+          Promise.all(jobs).then(go, go);
+        }
+
+        function recover() {
+          if (started()) return;
+          if (attempted()) return showStuck();
+          markAttempted();
+          clearAndReload();
+        }
+
         window.addEventListener('error', function (e) {
+          var what = e && (e.message || (e.target && (e.target.src || e.target.href)) || '');
+          if (e && e.target && e.target !== window) hadLoadError = true;
           var el = document.getElementById('boot-detail');
-          if (!el || !document.getElementById('boot')) return;
-          var what = e && (e.message || (e.target && e.target.src) || '');
-          if (what) el.textContent = String(what).slice(0, 300);
+          if (el && !started() && what) el.textContent = String(what).slice(0, 300);
         }, true);
+
+        var retry = document.getElementById('boot-retry');
+        if (retry) retry.onclick = clearAndReload;
+
+        window.addEventListener('load', function () {
+          // A file plainly failed to load: no reason to wait around.
+          setTimeout(function () { if (!started() && hadLoadError) recover(); }, 600);
+          // Backstop for slower failures, generous enough for a poor connection.
+          setTimeout(recover, 7000);
+        });
       })();
     </script>
 
