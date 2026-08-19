@@ -5,6 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0e1116" />
+    <meta name="description" content="A local-first evidence log. Everything stays on your device." />
 
     <!-- iOS has no install API and ignores the web manifest, so the home-screen
          appearance has to be declared the old way or the icon is a screenshot. -->
@@ -13,7 +14,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Papertrail" />
-    <meta name="description" content="A local-first evidence log. Everything stays on your device." />
+
     <title>Papertrail</title>
     <style>
       /* Painted before any stylesheet loads, so a failure is never a white void. */
@@ -27,40 +28,78 @@
       #boot pre { background: #0a0d11; border: 1px solid #262e3a; border-radius: 10px;
         padding: 0.85rem 1rem; overflow-x: auto; font-size: 0.85rem; color: #e9ecf1; }
       #boot .why { border-left: 2px solid #e8a84a; padding-left: 0.9rem; }
+      #boot-detail:empty { display: none; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
     <div id="root"></div>
 
     <!--
-      Shown only if the app never starts. React clears #root's siblings on mount,
-      so a working build hides this within a frame; a broken one explains itself
-      instead of leaving a blank page.
+      Shown only if the app never starts. React clears this on mount, so a
+      working build hides it within a frame. Which explanation applies depends on
+      how the page was opened, so the wrong one is hidden by the script below.
     -->
     <div id="boot">
       <h1>Papertrail didn’t start</h1>
-      <p class="why">
-        You are most likely opening this HTML file directly. That cannot work: browsers refuse to
-        load a modern app’s scripts over <code>file://</code>, so nothing runs. Papertrail has to be
-        served over <code>http://</code> — even locally.
-      </p>
-      <p>Build it and serve it:</p>
-      <pre>npm install
+
+      <div id="boot-file">
+        <p class="why">
+          You are most likely opening this HTML file directly. That cannot work: browsers refuse to
+          load a modern app’s scripts over <code>file://</code>, so nothing runs. Papertrail has to
+          be served over <code>http://</code> — even locally.
+        </p>
+        <p>Build it and serve it:</p>
+        <pre>npm install
 npm run build
 npm run preview</pre>
-      <p>
-        Then open the <code>http://localhost:…</code> address it prints. For day-to-day development
-        use <code>npm run dev</code> instead.
-      </p>
-      <p>
-        If you are hosting this: publish the <strong><code>dist/</code></strong> folder, not the
-        repository root. The file at the repo root is a build template and is not a working page.
-      </p>
+        <p>
+          Then open the <code>http://localhost:…</code> address it prints. For day-to-day
+          development use <code>npm run dev</code> instead.
+        </p>
+        <p>
+          If you are hosting this: publish the <strong><code>dist/</code></strong> folder, not the
+          repository root. The file at the repo root is a build template, not a working page.
+        </p>
+      </div>
+
+      <div id="boot-served" hidden>
+        <p class="why">
+          The page loaded but the app did not start. That usually means the browser is too old for
+          it, or a file failed to download on a poor connection.
+        </p>
+        <p>Worth trying, in order: reload the page, then close and reopen the browser tab.</p>
+        <p>
+          If it still fails, the browser is probably the problem — updating it, or opening the link
+          in Chrome, Firefox, or Safari, should sort it.
+        </p>
+        <pre id="boot-detail"></pre>
+      </div>
+
       <noscript>
-        <p><strong>JavaScript is turned off.</strong> Papertrail runs entirely in your browser, so it
-        needs JavaScript enabled.</p>
+        <p><strong>JavaScript is turned off.</strong> Papertrail runs entirely in your browser, so
+        it needs JavaScript enabled.</p>
       </noscript>
     </div>
+
+    <!-- Deliberately a classic script in old-fashioned syntax: this has to run on
+         exactly the browsers that are too old to parse the app itself. -->
+    <script>
+      (function () {
+        var served = location.protocol === 'http:' || location.protocol === 'https:';
+        if (served) {
+          document.getElementById('boot-file').hidden = true;
+          document.getElementById('boot-served').hidden = false;
+        }
+        // Surface the real reason rather than making the reader guess.
+        window.addEventListener('error', function (e) {
+          var el = document.getElementById('boot-detail');
+          if (!el || !document.getElementById('boot')) return;
+          var what = e && (e.message || (e.target && e.target.src) || '');
+          if (what) el.textContent = String(what).slice(0, 300);
+        }, true);
+      })();
+    </script>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>

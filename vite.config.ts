@@ -34,6 +34,8 @@ export default defineConfig({
     }),
   ],
   build: {
-    target: 'es2022',
+    // Phones stay on old browser versions far longer than desktops, and a
+    // syntax error means a blank page rather than a degraded one.
+    target: ['es2020', 'safari14', 'chrome87', 'firefox78'],
   },
 })

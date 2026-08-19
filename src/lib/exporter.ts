@@ -266,7 +266,7 @@ export async function importBackup(zip: File): Promise<RestoreSummary> {
     entries: entries.length,
     attachments: attachments.length,
     importedLedgerLength: imported.length,
-    importedHeadHash: imported.at(-1)?.hash ?? null,
+    importedHeadHash: imported.length ? (imported[imported.length - 1].hash ?? null) : null,
   })
 
   return { cases: cases.length, entries: entries.length, attachments: attachments.length, ledger: imported.length }
