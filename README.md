@@ -64,8 +64,8 @@ source; serving it directly is exactly what produces a blank page. Because the
 app uses hash routing, any static host works with no rewrite rules.
 
 **2. Host it on GitHub Pages.** A workflow in `.github/workflows/deploy.yml`
-builds the app and publishes it on every push. It needs one setting turned on,
-once: **Settings → Pages → Source → “GitHub Actions”**.
+builds the app and publishes it on every push. Pages must be set to
+**Settings → Pages → Source → “GitHub Actions”** — this repository already is.
 
 Do not set Pages to serve a branch root — that serves the build template and
 produces the blank page described above. The published URL
