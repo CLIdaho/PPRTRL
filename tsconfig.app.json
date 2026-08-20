@@ -18,5 +18,10 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client", "vite-plugin-pwa/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Tests run under node:test, which strips types rather than checking them, and
+  // they import node: builtins this project has no @types/node for. Keeping them
+  // out of the app project keeps the build dependency-free; `npm test` is what
+  // validates them.
+  "exclude": ["src/**/__tests__/**"]
 }

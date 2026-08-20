@@ -13,10 +13,16 @@ import { Ledger } from './routes/Ledger'
 import { Settings } from './routes/Settings'
 import { Guide } from './routes/Guide'
 import { NotFound } from './routes/NotFound'
-import { ensureTrailStarted } from './db/ledger'
+import { ensureTrailStarted, recordMigration } from './db/ledger'
 import './styles/app.css'
 
-void ensureTrailStarted()
+// Opening the database runs any pending schema upgrade. If that upgrade had to
+// reconstruct a timestamp, the ledger says so — a silent rewrite of stored
+// evidence is exactly what this app exists to make impossible.
+void (async () => {
+  await ensureTrailStarted()
+  await recordMigration()
+})()
 
 // The offline copy is best-effort. A service worker that fails to register — an
 // insecure origin, a browser with them disabled, a private window — must never

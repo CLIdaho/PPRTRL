@@ -1,9 +1,10 @@
 import { db } from './db'
 import { record } from './ledger'
-import type { Attachment, Case, Entry } from './types'
+import type { Attachment, Case, Entry, EntryKind, EntryProvenance, EntryStatus } from './types'
 import { newId } from '../lib/id'
 import { kindOf, safeFileName } from '../lib/files'
 import { sha256Blob } from '../lib/hash'
+import { isContemporaneous } from './migrate'
 
 /**
  * Every mutation in here writes a ledger entry. That pairing is the product:
@@ -54,31 +55,83 @@ export interface EntryDraft {
   people: string[]
   location: string
   source: string
+  kind?: EntryKind
+  status?: EntryStatus
+  provenance?: EntryProvenance
+  promptId?: string | null
 }
 
 export async function createEntry(draft: EntryDraft, files: File[] = []): Promise<Entry> {
   const now = Date.now()
+  const provenance =
+    draft.provenance ?? (isContemporaneous({ occurredAt: draft.occurredAt, recordedAt: now })
+      ? 'contemporaneous'
+      : 'backfilled')
+
   const entry: Entry = {
     id: newId('entry'),
     caseId: draft.caseId,
     title: draft.title.trim() || 'Untitled entry',
     notes: draft.notes,
     occurredAt: draft.occurredAt,
+    // Set here, once, from the clock — never from the caller. This is the only
+    // place in the app that assigns it.
     recordedAt: now,
     updatedAt: now,
     tags: draft.tags,
     people: draft.people,
     location: draft.location.trim(),
     source: draft.source.trim(),
+    kind: draft.kind ?? 'entry',
+    status: draft.status ?? 'complete',
+    provenance,
+    promptId: draft.promptId ?? null,
     deletedAt: null,
   }
   await db.entries.put(entry)
   await record('entry.create', entry.id, `Entry recorded: ${entry.title}`, {
     caseId: entry.caseId,
     occurredAt: entry.occurredAt,
+    recordedAt: entry.recordedAt,
+    kind: entry.kind,
+    status: entry.status,
+    provenance: entry.provenance,
+    lagMs: entry.recordedAt - entry.occurredAt,
   })
   for (const file of files) await addAttachment(entry.id, file)
   return entry
+}
+
+/**
+ * Records that a given day passed with nothing worth reporting.
+ *
+ * This is a real entry, not a marker: it gets a `recordedAt`, a ledger line, a
+ * place in the timeline and a row in the export. A quiet day someone confirmed
+ * was quiet is very different from a day nobody checked, and only an actual
+ * record can carry that difference.
+ */
+export async function recordNothingToReport(input: {
+  /** Local date the report covers, `YYYY-MM-DD`. */
+  forDate: string
+  /** Noon local on that date — a stable point that no time zone pushes off-day. */
+  occurredAt: number
+  promptId?: string | null
+  caseId?: string | null
+  note?: string
+}): Promise<Entry> {
+  return createEntry({
+    caseId: input.caseId ?? null,
+    title: `Nothing to report — ${input.forDate}`,
+    notes: input.note?.trim() ?? '',
+    occurredAt: input.occurredAt,
+    tags: [],
+    people: [],
+    location: '',
+    source: '',
+    kind: 'nothing-to-report',
+    status: 'complete',
+    promptId: input.promptId ?? null,
+  })
 }
 
 export async function updateEntry(
@@ -87,7 +140,26 @@ export async function updateEntry(
 ): Promise<void> {
   const before = await db.entries.get(id)
   if (!before) return
-  const after: Entry = { ...before, ...patch, updatedAt: Date.now() }
+
+  // The type already forbids these, but a type is a compile-time promise and
+  // this is the one field the app's central claim rests on. Strip them at
+  // runtime too, so a patch arriving from an import or a future caller cannot
+  // rewrite when something was written down.
+  const safe = { ...patch } as Record<string, unknown>
+  delete safe.id
+  delete safe.recordedAt
+  delete safe.deletedAt
+  delete safe.timestampsMigrated
+
+  const after: Entry = { ...before, ...(safe as Partial<Entry>), updatedAt: Date.now() }
+
+  // Correcting when something happened can move an entry across the line from
+  // "written at the time" to "written up later". The export has to say which,
+  // so the label is recomputed rather than left at whatever it was.
+  if (safe.occurredAt !== undefined && before.provenance !== 'catch-up') {
+    after.provenance = isContemporaneous(after) ? 'contemporaneous' : 'backfilled'
+  }
+
   await db.entries.put(after)
 
   // Record what changed, and the previous value, so an edit never silently

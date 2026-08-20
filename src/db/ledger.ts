@@ -1,4 +1,4 @@
-import { db } from './db'
+import { clearPendingMigration, db, pendingMigration } from './db'
 import type { LedgerAction, LedgerEntry } from './types'
 import { canonicalJson, sha256Text } from '../lib/hash'
 
@@ -97,6 +97,33 @@ export async function verifyChain(): Promise<ChainReport> {
   }
 
   return { length: all.length, intact: problems.length === 0, problems, headHash: prevHash }
+}
+
+/**
+ * Writes one ledger line if the schema upgrade repaired anything, so a
+ * reconstructed timestamp is visible in the record rather than indistinguishable
+ * from one the user actually observed.
+ */
+export async function recordMigration(): Promise<void> {
+  const report = pendingMigration
+  if (!report?.ran) return
+  clearPendingMigration()
+
+  // An upgrade that touched nothing is not worth a line in the record.
+  if (report.timestampsReconstructed === 0) return
+
+  await record(
+    'schema.migrate',
+    '-',
+    `Schema upgraded: ${report.timestampsReconstructed} of ${report.entriesSeen} entries had a missing timestamp reconstructed`,
+    {
+      entriesSeen: report.entriesSeen,
+      timestampsReconstructed: report.timestampsReconstructed,
+      note:
+        'Reconstructed timestamps are inferred from the other timestamps on the same row, ' +
+        'not observed. Affected entries carry timestampsMigrated and are labelled in exports.',
+    },
+  )
 }
 
 /** Writes the opening entry the first time the app is used. */
