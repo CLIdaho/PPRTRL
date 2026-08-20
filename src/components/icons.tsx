@@ -42,6 +42,20 @@ export const SettingsIcon = ({ size = 20, className }: Props) => (
   </svg>
 )
 
+export const BellIcon = ({ size = 20, className }: Props) => (
+  <svg {...base(size)} className={className} aria-hidden="true">
+    <path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5" />
+    <path d="M10.3 19a2 2 0 0 0 3.4 0" />
+  </svg>
+)
+
+export const CalendarIcon = ({ size = 20, className }: Props) => (
+  <svg {...base(size)} className={className} aria-hidden="true">
+    <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+    <path d="M3.5 10h17M8 3.5v3M16 3.5v3" />
+  </svg>
+)
+
 export const PlusIcon = ({ size = 20, className }: Props) => (
   <svg {...base(size)} className={className} aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
 )

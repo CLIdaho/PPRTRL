@@ -10,6 +10,8 @@ import { CaseDetail } from './routes/CaseDetail'
 import { EntryDetail } from './routes/EntryDetail'
 import { EntryForm } from './routes/EntryForm'
 import { Ledger } from './routes/Ledger'
+import { CheckIn } from './routes/CheckIn'
+import { Reminders } from './routes/Reminders'
 import { Settings } from './routes/Settings'
 import { Guide } from './routes/Guide'
 import { NotFound } from './routes/NotFound'
@@ -55,6 +57,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="entry/new" element={<EntryForm />} />
             <Route path="entry/:entryId" element={<EntryDetail />} />
             <Route path="entry/:entryId/edit" element={<EntryForm />} />
+            <Route path="check-in" element={<CheckIn />} />
+            <Route path="reminders" element={<Reminders />} />
             <Route path="ledger" element={<Ledger />} />
             <Route path="guide" element={<Guide />} />
             <Route path="settings" element={<Settings />} />
