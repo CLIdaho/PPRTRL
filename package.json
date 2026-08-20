@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false && tsc -b",
-    "test": "node --test \"src/**/*.test.ts\"",
+    "test": "TZ=America/Denver node --test \"src/**/*.test.ts\"",
     "build:single": "vite build --config vite.config.single.ts && node scripts/build-single.mjs"
   },
   "dependencies": {
