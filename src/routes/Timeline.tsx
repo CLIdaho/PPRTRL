@@ -8,7 +8,7 @@ import { EntryCard } from '../components/EntryCard'
 import { Explain } from '../components/Explain'
 import { InstallPrompt } from '../components/InstallPrompt'
 import { PlusIcon, SearchIcon } from '../components/icons'
-import { formatDayHeading } from '../lib/format'
+import { formatDateTime, formatDayHeading } from '../lib/format'
 
 function matches(entry: Entry, query: string): boolean {
   const q = query.trim().toLowerCase()
@@ -47,6 +47,12 @@ export function Timeline() {
     undefined,
   )
   const cases = useLiveQuery(() => db.cases.toArray(), [], [])
+  const drafts = useLiveQuery(
+    async () => (await db.entries.where('status').equals('draft').toArray())
+      .filter((e) => e.deletedAt === null)
+      .sort((a, b) => b.recordedAt - a.recordedAt),
+    [], [],
+  )
   const caseTitles = useMemo(
     () => new Map(cases.map((c) => [c.id, c.title] as const)),
     [cases],
@@ -85,6 +91,25 @@ export function Timeline() {
           Record
         </Link>
       </div>
+
+      {drafts.length > 0 && (
+        <div className="card stack" style={{ marginBottom: 14 }}>
+          <div className="section-label">Drafts — finish these when you have a moment</div>
+          <p className="tiny faint" style={{ marginTop: -4 }}>
+            Captured quickly and saved as-is. They are already real records; adding files, tags and
+            the right time only makes them stronger.
+          </p>
+          {drafts.map((d) => (
+            <Link key={d.id} to={`/entry/${d.id}/edit`} className="prompt-row" style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div className="grow">
+                <div className="truncate" style={{ fontWeight: 540 }}>{d.title}</div>
+                <div className="tiny faint">{formatDateTime(d.occurredAt)}</div>
+              </div>
+              <span className="chip accent">Add detail</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {entries.length > 0 && (
         <div className="stack" style={{ marginBottom: 18 }}>

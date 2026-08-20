@@ -9,11 +9,15 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
-      workbox: {
+      // injectManifest rather than the generated worker: Papertrail needs its
+      // own notificationclick and periodicsync handlers, which a generated
+      // worker has no way to carry. The precache behaviour is unchanged — src/sw.ts
+      // calls precacheAndRoute on the same injected manifest.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Evidence never leaves the device, so there is nothing to cache from
-        // the network beyond the app shell itself.
-        navigateFallback: 'index.html',
       },
       manifest: {
         name: 'Papertrail',

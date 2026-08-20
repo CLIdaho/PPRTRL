@@ -9,7 +9,7 @@ import { addAttachment, createEntry, removeAttachment, updateEntry } from '../db
 import { FilePicker } from '../components/FilePicker'
 import { kindIcons, TrashIcon } from '../components/icons'
 import { formatBytes } from '../lib/files'
-import { fromLocalInput, parseList, toLocalInput } from '../lib/format'
+import { formatDateTime, fromLocalInput, parseList, toLocalInput } from '../lib/format'
 import { shortHash } from '../lib/hash'
 
 /** One form for both recording a new entry and editing an existing one. */
@@ -78,6 +78,10 @@ export function EntryForm() {
           title: shared.title.trim() || 'Untitled entry',
           location: shared.location.trim(),
           source: shared.source.trim(),
+          // Enriching a quick capture is what completes it. recordedAt stays at
+          // the moment of capture — finishing the detail later does not make the
+          // entry newer, and pretending otherwise would lose the earlier claim.
+          status: 'complete',
         })
         for (const file of pending) await addAttachment(entryId, file)
         navigate(`/entry/${entryId}`, { replace: true })
@@ -96,10 +100,12 @@ export function EntryForm() {
   return (
     <>
       <div className="page-head">
-        <h1>{editing ? 'Edit entry' : 'Record an entry'}</h1>
+        <h1>{editing ? (existing?.status === 'draft' ? 'Add detail' : 'Edit entry') : 'Record an entry'}</h1>
         <p className="sub">
           {editing
-            ? 'Your original wording is kept in History, so editing never erases what you first said.'
+            ? existing?.status === 'draft'
+              ? 'Finishing a quick capture. When you wrote it stays as it was.'
+              : 'Your original wording is kept in History, so editing never erases what you first said.'
             : 'Write it down while you still remember it clearly.'}
         </p>
       </div>
@@ -139,6 +145,24 @@ export function EntryForm() {
               timeline sorts by this, not by when you typed it.
             </span>
           </div>
+
+          {/*
+            recordedAt is shown, never offered. Making it an input the app then
+            refuses to honour would be worse than not showing it at all.
+          */}
+          {editing && existing && (
+            <div className="field">
+              <label>When you wrote it down</label>
+              <div className="readonly-stamp">
+                {formatDateTime(existing.recordedAt)}
+                <span className="tiny faint"> · fixed</span>
+              </div>
+              <span className="hint">
+                Set once by the clock when this entry was created. Nothing in Papertrail can change
+                it — that is what makes it worth anything.
+              </span>
+            </div>
+          )}
 
           <div className="field">
             <label htmlFor="notes">Tell the story</label>

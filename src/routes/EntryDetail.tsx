@@ -8,10 +8,22 @@ import { deleteEntry, getBlob } from '../db/repo'
 import type { Attachment } from '../db/types'
 import { useBlobUrl } from '../components/BlobImage'
 import { Sheet } from '../components/Sheet'
-import { EditIcon, kindIcons, ShieldIcon, TrashIcon } from '../components/icons'
+import { AlertIcon, EditIcon, kindIcons, ShieldIcon, TrashIcon } from '../components/icons'
+import { isContemporaneous, recordingLag } from '../db/migrate'
 import { formatBytes, isPreviewable, KIND_LABEL } from '../lib/files'
 import { formatDateTime, isoLocal, relativeTime } from '../lib/format'
 import { download } from '../lib/zip'
+
+/** "3 days", "about 2 hours" — the gap between happening and being written down. */
+function describeLag(ms: number): string {
+  const abs = Math.abs(ms)
+  const hours = Math.round(abs / 3_600_000)
+  if (hours < 1) return 'under an hour'
+  if (hours < 48) return `about ${hours} hour${hours === 1 ? '' : 's'}`
+  const days = Math.round(abs / 86_400_000)
+  if (days < 60) return `${days} days`
+  return `about ${Math.round(days / 30)} months`
+}
 
 function AttachmentView({ att }: { att: Attachment }) {
   const url = useBlobUrl(att.id)
@@ -161,10 +173,45 @@ export function EntryDetail() {
         {attachments.map((att) => <AttachmentView key={att.id} att={att} />)}
 
         <div className="card">
-          <div className="section-label">When this was written down</div>
-          <div className="small muted">Recorded {formatDateTime(entry.recordedAt)}</div>
-          {edited && <div className="small muted">Last edited {formatDateTime(entry.updatedAt)}</div>}
-          <div className="tiny faint mono" style={{ marginTop: 6 }}>{isoLocal(entry.occurredAt)}</div>
+          <div className="section-label">Two different times</div>
+          <dl className="stamp-pair">
+            <dt>When it happened</dt>
+            <dd>
+              {formatDateTime(entry.occurredAt)}
+              <div className="tiny faint mono">{isoLocal(entry.occurredAt)}</div>
+              <div className="tiny faint">You can correct this if you got it wrong.</div>
+            </dd>
+            <dt>When you wrote it down</dt>
+            <dd>
+              {formatDateTime(entry.recordedAt)}
+              <div className="tiny faint mono">{isoLocal(entry.recordedAt)}</div>
+              <div className="tiny faint">Set once, by the clock. Nothing in the app can change it.</div>
+            </dd>
+          </dl>
+
+          {!isContemporaneous(entry) && (
+            <div className="banner" style={{ marginTop: 12 }}>
+              <AlertIcon />
+              <div>
+                This was written down <strong>{relativeTime(entry.recordedAt)}</strong>, about
+                something dated {formatDateTime(entry.occurredAt)} — a gap of{' '}
+                <strong>{describeLag(recordingLag(entry))}</strong>. That is perfectly normal, and
+                the export says so rather than presenting it as written at the time.
+              </div>
+            </div>
+          )}
+
+          {entry.timestampsMigrated && (
+            <div className="banner" style={{ marginTop: 12 }}>
+              <AlertIcon />
+              <div>
+                One of these times was missing from the stored record and had to be worked out from
+                the other. Treat it as approximate — the export flags it too.
+              </div>
+            </div>
+          )}
+
+          {edited && <div className="small muted" style={{ marginTop: 10 }}>Last edited {formatDateTime(entry.updatedAt)}</div>}
 
           {history.length > 0 && (
             <>

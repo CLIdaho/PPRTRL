@@ -10,13 +10,21 @@ import { CaseDetail } from './routes/CaseDetail'
 import { EntryDetail } from './routes/EntryDetail'
 import { EntryForm } from './routes/EntryForm'
 import { Ledger } from './routes/Ledger'
+import { CheckIn } from './routes/CheckIn'
+import { Reminders } from './routes/Reminders'
 import { Settings } from './routes/Settings'
 import { Guide } from './routes/Guide'
 import { NotFound } from './routes/NotFound'
-import { ensureTrailStarted } from './db/ledger'
+import { ensureTrailStarted, recordMigration } from './db/ledger'
 import './styles/app.css'
 
-void ensureTrailStarted()
+// Opening the database runs any pending schema upgrade. If that upgrade had to
+// reconstruct a timestamp, the ledger says so — a silent rewrite of stored
+// evidence is exactly what this app exists to make impossible.
+void (async () => {
+  await ensureTrailStarted()
+  await recordMigration()
+})()
 
 // The offline copy is best-effort. A service worker that fails to register — an
 // insecure origin, a browser with them disabled, a private window — must never
@@ -49,6 +57,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="entry/new" element={<EntryForm />} />
             <Route path="entry/:entryId" element={<EntryDetail />} />
             <Route path="entry/:entryId/edit" element={<EntryForm />} />
+            <Route path="check-in" element={<CheckIn />} />
+            <Route path="reminders" element={<Reminders />} />
             <Route path="ledger" element={<Ledger />} />
             <Route path="guide" element={<Guide />} />
             <Route path="settings" element={<Settings />} />

@@ -79,6 +79,9 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
+  /* Nothing in this app is meant to scroll sideways; if something overflows,
+     that is a bug to fix rather than a gesture to offer. */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4 { margin: 0; line-height: 1.25; letter-spacing: -0.01em; }
@@ -94,6 +97,17 @@ button, input, textarea, select {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/*
+ * Both bars are fixed, so anything the browser scrolls to itself — a focused
+ * field, a validation jump, a fragment link — can otherwise come to rest
+ * underneath one of them, out of reach. scroll-margin reserves the space so
+ * every control stops in the clear.
+ */
+:where(button, a, input, textarea, select, label) {
+  scroll-margin-top: 72px;
+  scroll-margin-bottom: calc(var(--nav-h) + 72px + env(safe-area-inset-bottom));
 }
 
 /* ------------------------------- app shell ------------------------------- */
@@ -145,7 +159,13 @@ button, input, textarea, select {
   width: 100%;
   max-width: var(--shell-max);
   margin: 0 auto;
-  padding: 20px 16px 40px;
+  /*
+   * The bottom padding clears the quick-capture button, not just the tab bar
+   * the shell already accounts for. Without it the last control on a long
+   * screen — a toggle, a save button — sits underneath the FAB and simply
+   * cannot be tapped, which is the kind of bug that only shows up on a phone.
+   */
+  padding: 20px 16px calc(40px + 56px);
   flex: 1;
 }
 
@@ -162,7 +182,14 @@ button, input, textarea, select {
   right: 0;
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /*
+   * minmax(0, 1fr), not 1fr. A bare `1fr` track refuses to shrink below its
+   * content, so five tabs whose labels total more than the screen width push
+   * the bar wider than the viewport — "Settings" ends up cut off the right edge
+   * and the whole document scrolls sideways. The explicit zero minimum lets the
+   * tracks divide the width evenly however narrow the phone is.
+   */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   background: var(--bg-raised);
   border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom);
@@ -188,6 +215,12 @@ button, input, textarea, select {
   font-size: 11px;
   letter-spacing: 0.01em;
   transition: color 0.15s ease;
+  /* Labels stay on one line and clip rather than widening their track. */
+  min-width: 0;
+  padding: 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tabbar a.active { color: var(--accent); }
@@ -500,6 +533,19 @@ button, input, textarea, select {
 .sheet {
   width: 100%;
   max-width: 460px;
+  /*
+   * A sheet must never grow taller than the screen. The schedule editor, with
+   * 31 month-date chips and every field on show, is around 980px on a phone —
+   * left unbounded it overflows both ends of the viewport and the Save button
+   * becomes literally unreachable. Capping the height and scrolling the body
+   * is what keeps that from happening as the form grows.
+   *
+   * dvh where supported, so the bar that appears and disappears as a phone
+   * browser scrolls does not resize the sheet underneath the user's thumb.
+   */
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
@@ -507,6 +553,34 @@ button, input, textarea, select {
   box-shadow: var(--shadow);
   animation: rise 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
+
+@supports (max-height: 88dvh) {
+  .sheet { max-height: 88dvh; }
+}
+
+/*
+ * Only the middle scrolls. The title stays put and the footer keeps Save
+ * against the bottom edge, where a thumb can reach it without scrolling to
+ * the end of a long form first.
+ */
+.sheet > h2 { flex: none; }
+
+.sheet > .stack,
+.sheet > .field,
+.sheet > p {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.sheet > .row:last-child {
+  flex: none;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-raised);
+}
+
 @media (min-width: 640px) { .sheet { border-radius: var(--radius-lg); padding-bottom: 20px; } }
 
 @keyframes fade { from { opacity: 0; } }
@@ -640,3 +714,278 @@ button, input, textarea, select {
 }
 
 .install-card strong { font-size: 14.5px; }
+
+/* ------------------------- reminders and check-in ------------------------- */
+
+/*
+ * Quick capture, pinned above the tab bar on every screen. Positioned off the
+ * safe-area inset rather than a fixed offset so it clears the gesture bar on a
+ * Samsung phone rather than sitting under it.
+ */
+.fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+  z-index: 35;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.15s ease;
+}
+
+.fab:active {
+  transform: scale(0.93);
+  filter: brightness(0.94);
+}
+
+/* The capture sheet gives the keyboard room without the field jumping about. */
+.quick-sheet {
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+.tab-icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.tab-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.prompt-row,
+.anchor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.prompt-row:first-of-type,
+.anchor-row:first-of-type {
+  border-top: 0;
+}
+
+.anchor-row.off {
+  opacity: 0.55;
+}
+
+.switch-row {
+  padding: 6px 0;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.switch-row input[type='checkbox'] {
+  width: 44px;
+  height: 26px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/*
+ * The coverage calendar. auto-fill rather than a fixed column count so the grid
+ * reflows from a 360px phone to a tablet without a media query, and the cells
+ * stay square via aspect-ratio rather than padding hacks.
+ */
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: 5px;
+  margin: 4px 0 2px;
+}
+
+.coverage-cell {
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease;
+}
+
+.coverage-cell:active {
+  transform: scale(0.92);
+}
+
+.coverage-cell.logged {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.coverage-cell.nothing-to-report {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text-dim);
+}
+
+.coverage-cell.unaccounted {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--line-strong);
+  color: var(--text-faint);
+}
+
+/*
+ * A backfilled day is marked with a corner flag rather than a different fill:
+ * it still counts as covered, and colouring it as a separate state would read
+ * as "not logged". The distinction is about provenance, not coverage.
+ */
+.coverage-cell.backfilled {
+  position: relative;
+}
+
+.coverage-cell.backfilled::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid var(--warn);
+  border-left: 6px solid transparent;
+}
+
+.coverage-key {
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.coverage-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  border: 1px solid var(--line-strong);
+  display: inline-block;
+}
+
+.swatch.logged { background: var(--ok-soft); border-color: var(--ok); }
+.swatch.nothing-to-report { background: var(--surface); }
+.swatch.unaccounted { background: transparent; border-style: dashed; }
+.swatch.backfilled-key { background: var(--warn); border-color: var(--warn); }
+
+/* 31 date chips need to stay tappable without overflowing a narrow phone. */
+.month-days {
+  gap: 4px;
+}
+
+.month-days .chip {
+  min-width: 32px;
+  justify-content: center;
+  padding: 5px 6px;
+}
+
+.plain-list.numbered {
+  list-style: decimal;
+  padding-left: 20px;
+}
+
+.plain-list.numbered li {
+  margin-bottom: 8px;
+}
+
+/* Provenance labelling, used on entry cards and detail. */
+.provenance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.entry-kind-ntr {
+  opacity: 0.82;
+}
+
+.entry-kind-ntr h3 {
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+/*
+ * Five tabs rather than four leaves each label about 70px on a 360px-wide
+ * phone, which is where the default 11px starts to wrap "Check-in".
+ */
+@media (max-width: 380px) {
+  .tabbar a {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+}
+
+/* Both timestamps side by side, so neither can be mistaken for the other. */
+.stamp-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px 0;
+  margin: 0;
+}
+
+.stamp-pair dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-top: 12px;
+}
+
+.stamp-pair dt:first-child {
+  margin-top: 0;
+}
+
+.stamp-pair dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+/*
+ * A displayed-but-not-editable timestamp. Deliberately not styled as an input:
+ * offering a field the app then refuses to honour is worse than showing plain
+ * text that is obviously fixed.
+ */
+.readonly-stamp {
+  padding: 10px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  color: var(--text-dim);
+  font-size: 14px;
+}

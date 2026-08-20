@@ -48,13 +48,21 @@ export function Guide() {
           <div className="step">
             <span className="step-num">3</span>
             <div>
+              <h4>Check-in</h4>
+              <p>Anything you were reminded about, and a calendar of the last month showing which
+                days have a record and which are blank. Tap a blank day to fill it in.</p>
+            </div>
+          </div>
+          <div className="step">
+            <span className="step-num">4</span>
+            <div>
               <h4>History</h4>
               <p>A sealed log of every single thing that has happened in the app. It is what turns a
                 pile of files into something a sceptical person can trust.</p>
             </div>
           </div>
           <div className="step">
-            <span className="step-num">4</span>
+            <span className="step-num">5</span>
             <div>
               <h4>Settings</h4>
               <p>Backups, exports, and the switch that stops your browser deleting your records.
@@ -64,8 +72,67 @@ export function Guide() {
         </div>
 
         <div className="card stack">
+          <div className="section-label">Reminders, and what actually works</div>
+          <Explain question="Why does it keep telling me to use my calendar?" defaultOpen>
+            <p>
+              Because it is the only reminder that reliably arrives on time. Papertrail makes a
+              calendar file; your phone's own calendar fires it, with the app closed and the screen
+              off.
+            </p>
+            <p>
+              A web app cannot ask your phone to wake it at an exact moment. The browser feature for
+              that was proposed years ago and never shipped. What is left lets the browser check
+              when it feels like it — roughly twice a day at best — and Samsung's battery settings
+              can switch that off entirely. So notifications are worth turning on, and not worth
+              depending on. Regenerate the calendar file whenever you change a schedule.
+            </p>
+          </Explain>
+
+          <Explain question="What if I miss a reminder anyway?">
+            <p>
+              Nothing is lost. Papertrail works out every reminder that came due while it was closed
+              the next time you open it, and puts them on the Check-in screen as a list waiting for
+              you.
+            </p>
+            <p>
+              Anything you write from one of those is dated to the day it is about, while the record
+              of when you actually typed it stays honest. Both are shown, and both go into the
+              export.
+            </p>
+          </Explain>
+
+          <Explain question="Why is “nothing to report” worth recording?">
+            <p>
+              Because a day you checked and found quiet is very different from a day you never
+              looked at — and after a few months you will not remember which was which.
+            </p>
+            <p>
+              A log with unexplained blank stretches invites the question of what was left out. One
+              that says “I checked on these days and there was nothing” answers it in advance. The
+              export lists both, and states plainly that an unaccounted-for day means nothing was
+              recorded, not that nothing happened.
+            </p>
+          </Explain>
+        </div>
+
+        <div className="card stack">
           <div className="section-label">The words this app uses</div>
-          <Explain question="What is a “hash”?" defaultOpen>
+          <Explain question="Why are there two different times on every entry?" defaultOpen>
+            <p>
+              <strong>When it happened</strong> is the event itself. You set it, and you can correct
+              it if you got it wrong. <strong>When you wrote it down</strong> is fixed the moment you
+              save, from the device clock, and nothing in this app can change it afterwards.
+            </p>
+            <p>
+              The gap between the two is the point. An account written the same afternoon carries
+              more weight than one written six weeks later — not because the later one is untrue,
+              but because memory fades and everyone knows it. Papertrail shows both, names the gap
+              in plain words, and never lets an entry written up later look like one written at the
+              time.
+            </p>
+          </Explain>
+
+          <Explain question="What is a “hash”?">
             <p>
               A hash is a short fingerprint of a file, worked out from its contents. The same file
               always produces the same fingerprint. Change even one pixel or one letter and the

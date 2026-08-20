@@ -1,14 +1,19 @@
 import { db } from '../db/db'
 import { record, verifyChain } from '../db/ledger'
 import { getBlob } from '../db/repo'
-import type { Attachment, Case, Entry } from '../db/types'
+import type { Anchor, Attachment, Case, Entry, Prompt, SettingRecord } from '../db/types'
+import { normalizeTimestamps, type StoredEntryRow } from '../db/migrate'
 import { createZip, download, type ZipFile } from './zip'
-import { buildReport, type ReportAttachment } from './report'
+import { buildReport, describeLag, type ReportAttachment } from './report'
+import { buildCoverage, describeCoverage } from './coverage'
+import { isContemporaneous, recordingLag } from '../db/migrate'
+import { getSweep } from '../db/reminders'
+import { buildCalendar } from './ics'
 import { isoLocal } from './format'
 import { safeFileName } from './files'
 import { sha256Text } from './hash'
 
-const APP_VERSION = '0.1.0'
+const APP_VERSION = '0.2.0'
 
 function stamp(ms: number): string {
   const d = new Date(ms)
@@ -94,8 +99,15 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
   const ledger = await db.ledger.orderBy('seq').toArray()
   const chain = await verifyChain()
 
+  // Coverage is computed over everything recorded, not just this case: a case
+  // covering three days out of ninety is not thirty-three percent covered, and
+  // scoping the window to the case would imply exactly that.
+  const sweep = await getSweep()
+  const allEntries = await db.entries.toArray()
+  const coverage = buildCoverage(allEntries, sweep.lookbackDays, now)
+
   const manifest = {
-    format: 'papertrail-export/1',
+    format: 'papertrail-export/2',
     app: { name: 'Papertrail', version: APP_VERSION },
     exportedAt: isoLocal(now),
     scope: theCase ? { kind: 'case', id: theCase.id, title: theCase.title } : { kind: 'all' },
@@ -107,10 +119,33 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
       problems: chain.problems,
     },
     case: theCase,
+    coverage: {
+      summary: describeCoverage(coverage),
+      windowDays: coverage.totalDays,
+      firstDate: coverage.firstDate,
+      lastDate: coverage.lastDate,
+      daysWithEntries: coverage.logged,
+      daysConfirmedNothingToReport: coverage.nothingToReport,
+      daysUnaccountedFor: coverage.unaccounted,
+      longestGapDays: coverage.longestGapDays,
+      note:
+        'A day confirmed as nothing-to-report carries an actual record. A day marked unaccounted ' +
+        'for means nothing was recorded that day — not that nothing happened.',
+      days: coverage.days.map((d) => ({ date: d.date, state: d.state, backfilledOnly: d.backfilledOnly })),
+    },
+    counts: {
+      entries: entries.filter((e) => e.kind !== 'nothing-to-report').length,
+      nothingToReportDays: entries.filter((e) => e.kind === 'nothing-to-report').length,
+      writtenAfterTheFact: entries.filter((e) => !isContemporaneous(e)).length,
+      timestampsReconstructed: entries.filter((e) => e.timestampsMigrated).length,
+    },
     entries: entries.map((entry) => ({
       ...entry,
       occurredAtISO: isoLocal(entry.occurredAt),
       recordedAtISO: isoLocal(entry.recordedAt),
+      recordingGapMs: recordingLag(entry),
+      recordingGap: describeLag(recordingLag(entry)),
+      contemporaneous: isContemporaneous(entry),
       attachments: (byEntry.get(entry.id) ?? []).map((a) => ({
         name: a.name,
         path: options.includeFiles ? `files/${a.exportPath}` : null,
@@ -128,10 +163,10 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
   zipFiles.unshift(
     { path: 'report.html', data: buildReport({
       case: theCase, entries, attachmentsByEntry: byEntry, ledger,
-      headHash: chain.headHash, generatedAt: now,
+      headHash: chain.headHash, generatedAt: now, coverage,
     }), modified: new Date(now) },
     { path: 'manifest.json', data: manifestJson, modified: new Date(now) },
-    { path: 'README.txt', data: readme(chain.intact, chain.headHash), modified: new Date(now) },
+    { path: 'README.txt', data: readme(chain.intact, chain.headHash, describeCoverage(coverage)), modified: new Date(now) },
   )
 
   const blob = await createZip(zipFiles)
@@ -149,7 +184,7 @@ export async function exportBundle(options: ExportOptions): Promise<ExportResult
   return { filename, entries: entries.length, files: fileCount, size: blob.size }
 }
 
-function readme(intact: boolean, head: string): string {
+function readme(intact: boolean, head: string, coverage: string): string {
   return `PAPERTRAIL EXPORT
 =================
 
@@ -169,6 +204,37 @@ HOW TO CHECK NOTHING WAS ALTERED
     Windows          certutil -hashfile "files\\001-example.jpg" SHA256
 
   A matching digest means the file is bit-for-bit what was recorded.
+
+THE TWO TIMESTAMPS ON EVERY ENTRY
+  Every entry carries two separate times, and the difference between them matters:
+
+    Event occurred   when the thing being described happened. The person keeping
+                     the log sets this, and can correct it.
+    Written down     when the entry was created in the app. Set once from the
+                     device clock, and no part of the app can change it
+                     afterwards.
+
+  Where those two are more than an hour apart, the entry is explicitly labelled
+  as written up after the fact, together with the size of the gap. An entry
+  written weeks later may be perfectly truthful, but it is not a contemporaneous
+  note, and this bundle never presents it as one.
+
+  A handful of entries may carry a warning that a timestamp was reconstructed.
+  That means the value was missing from the stored record and was inferred from
+  the other timestamp on the same entry. Treat those as approximate.
+
+NOTHING-TO-REPORT DAYS AND GAPS
+  ${coverage}
+
+  Entries of type "nothing-to-report" record that the person keeping this log
+  actively checked a given day and confirmed nothing happened. They are real
+  records with their own timestamps, listed in the timeline and in
+  manifest.json alongside everything else.
+
+  A day that is neither logged nor confirmed is listed as unaccounted for. That
+  means nothing was recorded on that day. It does not mean nothing happened.
+  The coverage figures above state the difference plainly rather than leaving
+  a reader to assume the log is complete.
 
 THE ACTION LOG
   manifest.json contains a hash chain of every action ever taken in this
@@ -191,15 +257,36 @@ WHAT THIS DOES AND DOES NOT PROVE
 /** A complete copy of the database, restorable into a fresh install. */
 export async function exportBackup(): Promise<ExportResult> {
   const now = Date.now()
-  const [cases, entries, attachments, ledger] = await Promise.all([
-    db.cases.toArray(), db.entries.toArray(), db.attachments.toArray(), db.ledger.orderBy('seq').toArray(),
+  const [cases, entries, attachments, ledger, anchors, prompts, settings] = await Promise.all([
+    db.cases.toArray(), db.entries.toArray(), db.attachments.toArray(),
+    db.ledger.orderBy('seq').toArray(), db.anchors.toArray(), db.prompts.toArray(),
+    db.settings.toArray(),
   ])
 
   const files: ZipFile[] = [{
     path: 'papertrail-backup.json',
-    data: JSON.stringify({ format: 'papertrail-backup/1', createdAt: isoLocal(now), cases, entries, attachments, ledger }, null, 2),
+    data: JSON.stringify({
+      format: 'papertrail-backup/2', createdAt: isoLocal(now),
+      cases, entries, attachments, ledger, anchors, prompts, settings,
+    }, null, 2),
     modified: new Date(now),
   }]
+
+  // The calendar rides along, so restoring onto a new phone can re-arm the
+  // reminders without the user having to remember to regenerate it.
+  const sweep = await getSweep()
+  if (anchors.length || sweep.enabled) {
+    const device = settings.find((r) => r.key === 'deviceId')?.value
+    files.push({
+      path: 'papertrail-reminders.ics',
+      data: buildCalendar({
+        anchors, sweep,
+        deviceId: typeof device === 'string' ? device : 'restored',
+        now,
+      }),
+      modified: new Date(now),
+    })
+  }
 
   for (const att of attachments) {
     const blob = await getBlob(att.id)
@@ -211,6 +298,7 @@ export async function exportBackup(): Promise<ExportResult> {
   download(blob, filename)
   await record('export.backup', '-', 'Full backup created', {
     cases: cases.length, entries: entries.length, attachments: attachments.length,
+    anchors: anchors.length, prompts: prompts.length,
   })
   return { filename, entries: entries.length, files: attachments.length, size: blob.size }
 }
@@ -236,35 +324,70 @@ export async function importBackup(zip: File): Promise<RestoreSummary> {
   const parsed = JSON.parse(await manifestBlob.text()) as {
     format?: string
     cases?: Case[]
-    entries?: Entry[]
+    entries?: StoredEntryRow[]
     attachments?: Attachment[]
     ledger?: unknown[]
+    anchors?: Anchor[]
+    prompts?: Prompt[]
+    settings?: SettingRecord[]
   }
-  if (parsed.format !== 'papertrail-backup/1') {
+  // A backup written by version 1 predates the reminder tables and the entry
+  // fields added with them, so it is accepted and its rows are brought up to
+  // the current shape on the way in rather than rejected outright.
+  if (parsed.format !== 'papertrail-backup/1' && parsed.format !== 'papertrail-backup/2') {
     throw new Error(`Unrecognised backup format: ${parsed.format ?? 'unknown'}`)
   }
 
   const cases = parsed.cases ?? []
-  const entries = parsed.entries ?? []
   const attachments = parsed.attachments ?? []
+  const anchors = parsed.anchors ?? []
+  const prompts = parsed.prompts ?? []
 
-  await db.transaction('rw', db.cases, db.entries, db.attachments, db.blobs, async () => {
-    await db.cases.bulkPut(cases)
-    await db.entries.bulkPut(entries)
-    await db.attachments.bulkPut(attachments)
-    for (const att of attachments) {
-      const blob = files.get(`blobs/${att.id}`)
-      if (blob) await db.blobs.put({ id: att.id, data: blob })
-    }
+  // Rows from an older backup go through exactly the same repair the schema
+  // upgrade uses, so an import can never introduce an entry missing a
+  // timestamp the rest of the app assumes is there.
+  const restoreNow = Date.now()
+  let reconstructed = 0
+  const entries: Entry[] = (parsed.entries ?? []).map((row) => {
+    const { row: fixed, migrated } = normalizeTimestamps(row, restoreNow)
+    if (migrated) reconstructed++
+    return fixed
   })
+
+  // Table list as an array: Dexie's variadic transaction overloads stop short
+  // of the number of stores this touches.
+  await db.transaction(
+    'rw',
+    [db.cases, db.entries, db.attachments, db.blobs, db.anchors, db.prompts, db.settings],
+    async () => {
+      await db.cases.bulkPut(cases)
+      await db.entries.bulkPut(entries)
+      await db.attachments.bulkPut(attachments)
+      if (anchors.length) await db.anchors.bulkPut(anchors)
+      if (prompts.length) await db.prompts.bulkPut(prompts)
+      // deviceId is deliberately not restored: a second phone importing this
+      // backup must mint its own, or the two devices would emit colliding
+      // calendar UIDs and overwrite each other's reminders.
+      const settings = (parsed.settings ?? []).filter((r) => r.key !== 'deviceId')
+      if (settings.length) await db.settings.bulkPut(settings)
+
+      for (const att of attachments) {
+        const blob = files.get(`blobs/${att.id}`)
+        if (blob) await db.blobs.put({ id: att.id, data: blob })
+      }
+    },
+  )
 
   // The imported ledger belongs to another chain, so it is not spliced into this
   // device's chain. The import is recorded here instead, with its head hash.
   const imported = (parsed.ledger ?? []) as { hash?: string }[]
   await record('import.backup', '-', `Restored from backup: ${zip.name}`, {
+    format: parsed.format,
     cases: cases.length,
     entries: entries.length,
     attachments: attachments.length,
+    anchors: anchors.length,
+    timestampsReconstructed: reconstructed,
     importedLedgerLength: imported.length,
     importedHeadHash: imported.length ? (imported[imported.length - 1].hash ?? null) : null,
   })
