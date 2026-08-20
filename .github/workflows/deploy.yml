@@ -39,6 +39,11 @@ jobs:
       - name: Type-check
         run: npx tsc -b
 
+      # The schedule engine and the timestamp migration are the parts most
+      # likely to break silently, so they gate the deploy.
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
 

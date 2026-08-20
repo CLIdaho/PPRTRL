@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 
 import { db } from '../db/db'
@@ -34,7 +35,10 @@ export function Settings() {
 
   const counts = useLiveQuery(async () => ({
     cases: await db.cases.count(),
-    entries: (await db.entries.toArray()).filter((e) => e.deletedAt === null).length,
+    entries: (await db.entries.toArray())
+      .filter((e) => e.deletedAt === null && e.kind !== 'nothing-to-report').length,
+    quiet: (await db.entries.toArray())
+      .filter((e) => e.deletedAt === null && e.kind === 'nothing-to-report').length,
     attachments: await db.attachments.count(),
     ledger: await db.ledger.count(),
   }), [], null)
@@ -85,6 +89,7 @@ export function Settings() {
               <span className="chip">{counts.cases} cases</span>
               <span className="chip">{counts.attachments} files</span>
               <span className="chip">{counts.ledger} ledger lines</span>
+              {counts.quiet > 0 && <span className="chip">{counts.quiet} quiet days</span>}
             </div>
             {estimate?.usage != null && (
               <p className="tiny faint" style={{ marginTop: 10 }}>
@@ -183,6 +188,14 @@ export function Settings() {
           >
             {persisted === true ? 'Storage is already persistent' : 'Request persistent storage'}
           </button>
+        </div>
+
+        <div className="card stack">
+          <div className="section-label">Reminders</div>
+          <p className="small muted">
+            A daily check-in, recurring events, and a calendar file your phone can fire on time.
+          </p>
+          <Link className="btn block" to="/reminders">Reminders &amp; schedule</Link>
         </div>
 
         <div className="card stack">
